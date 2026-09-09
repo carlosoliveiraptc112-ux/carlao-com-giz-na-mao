@@ -57,7 +57,7 @@ const mainOptions = [
 const categories = [
   {
     name: "Álgebra",
-    count: 5,
+    count: 3,
     topics: [
       "Equações do 1º grau",
       "Produtos notáveis",
@@ -66,7 +66,7 @@ const categories = [
   },
   {
     name: "Funções",
-    count: 4,
+    count: 3,
     topics: [
       "Função afim",
       "Função quadrática",
@@ -75,7 +75,7 @@ const categories = [
   },
   {
     name: "Geometria",
-    count: 5,
+    count: 3,
     topics: [
       "Áreas de figuras",
       "Teorema de Pitágoras",
@@ -123,50 +123,46 @@ const categories = [
       "Gráficos e tabelas",
     ],
   },
-  {
-    name: "ENEM e Vestibulares",
-    count: 3,
-    topics: [
-      "Interpretação",
-      "Estratégias de prova",
-      "Questões mistas",
-    ],
-  },
 ];
 
 const lessons = {
   Porcentagem: [
     {
       title: "1. O conceito",
-      text: "Porcentagem significa uma parte de cada 100. Assim, 15% representa 15 de 100, ou 15/100 = 0,15.",
+      text:
+        "Porcentagem significa uma parte de cada 100. Assim, 15% representa 15 de 100.",
       example: "15% = 15/100 = 0,15",
     },
     {
       title: "2. Como calcular",
-      text: "Transforme a porcentagem em decimal e multiplique pelo valor total.",
+      text:
+        "Transforme a porcentagem em decimal e multiplique pelo valor total.",
       example: "15% de 200 = 0,15 × 200 = 30",
     },
     {
       title: "3. Sua vez",
-      text: "Quanto é 20% de 150? Pense antes de avançar.",
-      example: "Resposta: 0,20 × 150 = 30",
+      text: "Quanto é 20% de 150?",
+      example: "20% de 150 = 0,20 × 150 = 30",
     },
   ],
 
   "Equações do 1º grau": [
     {
       title: "1. O conceito",
-      text: "Uma equação é uma igualdade com um valor desconhecido. Nosso objetivo é deixar a incógnita sozinha.",
+      text:
+        "Uma equação é uma igualdade com um valor desconhecido. Nosso objetivo é descobrir esse valor.",
       example: "2x + 6 = 18",
     },
     {
       title: "2. Equilibrando",
-      text: "Tudo o que fazemos de um lado deve ser feito do outro. Primeiro, subtraímos 6 dos dois lados.",
-      example: "2x = 12",
+      text:
+        "Tudo o que fazemos de um lado da igualdade também deve ser feito do outro.",
+      example: "2x + 6 - 6 = 18 - 6",
     },
     {
       title: "3. Encontrando x",
-      text: "Agora dividimos os dois lados por 2.",
+      text:
+        "Depois de obter 2x = 12, dividimos os dois lados por 2.",
       example: "x = 6",
     },
   ],
@@ -196,19 +192,26 @@ export default function ChatApp() {
   ]);
 
   const [view, setView] = useState("main");
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] =
+    useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [lessonStep, setLessonStep] = useState(0);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeMode, setActiveMode] = useState(null);
   const bottomRef = useRef(null);
 
   function addMessages(...newMessages) {
-    setMessages((current) => [...current, ...newMessages]);
+    setMessages((current) => [
+      ...current,
+      ...newMessages,
+    ]);
   }
 
   function chooseMain(option) {
-    if (!option || !option.id) return;
+    if (!option) return;
+
+    setActiveMode(option.id);
 
     if (option.id === "learn") {
       addMessages(
@@ -217,6 +220,7 @@ export default function ChatApp() {
           "Escolha qual grande área da Matemática você quer estudar agora:"
         )
       );
+
       setView("categories");
       return;
     }
@@ -225,31 +229,41 @@ export default function ChatApp() {
       addMessages(
         student(option.title),
         tutor(
-          "Digite a questão no campo abaixo. Nesta versão demonstrativa, vou mostrar como o atendimento será organizado."
+          "Digite ou cole sua questão no campo abaixo."
         )
       );
+
       setView("question");
+      return;
+    }
+
+    if (option.id === "challenge") {
+      addMessages(
+        student(option.title),
+        tutor(
+          "Desafio: um número somado ao seu dobro resulta em 36. Qual é esse número?"
+        )
+      );
+
+      setView("challenge");
       return;
     }
 
     const replies = {
       mock:
-        "Simulado demonstrativo iniciado: serão 5 questões, apresentadas uma por vez, com resultado ao final.",
-
-      challenge:
-        "Desafio: um número somado ao seu dobro resulta em 36. Qual é esse número?",
+        "Simulado demonstrativo selecionado. Na próxima versão, as questões serão apresentadas uma por vez e o resultado aparecerá no final.",
 
       enem:
-        "Treino ENEM selecionado. Na versão completa, você poderá escolher assunto e dificuldade.",
+        "Treino ENEM selecionado. Você poderá escolher o conteúdo e a dificuldade das questões.",
 
       exam:
-        "Vestibulares selecionados. A versão completa permitirá escolher banca, assunto e dificuldade.",
+        "Vestibulares selecionados. Você poderá escolher a banca, o assunto e o nível de dificuldade.",
 
       progress:
-        "Desempenho da demonstração: você explorou o tutor guiado. O histórico completo será conectado na próxima etapa.",
+        "Seu desempenho aparecerá aqui quando o histórico de estudos estiver conectado.",
 
       level:
-        "Diagnóstico demonstrativo: você responderá algumas questões e o Carlão indicará o melhor ponto de partida.",
+        "O diagnóstico usará questões progressivas para identificar seu nível de Matemática.",
     };
 
     addMessages(
@@ -261,7 +275,7 @@ export default function ChatApp() {
   }
 
   function chooseCategory(category) {
-    if (!category || !category.topics) return;
+    if (!category) return;
 
     setSelectedCategory(category);
 
@@ -293,7 +307,8 @@ export default function ChatApp() {
 
   function nextLesson() {
     const lessonSteps =
-      lessons[selectedTopic] || lessons["Equações do 1º grau"];
+      lessons[selectedTopic] ||
+      lessons["Equações do 1º grau"];
 
     if (lessonStep < lessonSteps.length - 1) {
       setLessonStep((current) => current + 1);
@@ -313,7 +328,7 @@ export default function ChatApp() {
     addMessages(
       student("Não entendi"),
       tutor(
-        "Sem problema. Pense na igualdade como uma balança. Para ela continuar equilibrada, faça sempre a mesma operação nos dois lados."
+        "Sem problema. Pense na igualdade como uma balança: para ela continuar equilibrada, precisamos fazer a mesma operação nos dois lados."
       )
     );
   }
@@ -325,32 +340,78 @@ export default function ChatApp() {
 
     if (!text) return;
 
+    const normalized = text
+      .toLowerCase()
+      .replace(/\s/g, "");
+
+    if (activeMode === "challenge") {
+      const correct =
+        normalized === "12" ||
+        normalized === "x=12";
+
+      if (correct) {
+        addMessages(
+          student(text),
+          tutor(
+            "Muito bem! ✅ A resposta é 12. Representando o número por x, temos x + 2x = 36. Portanto, 3x = 36 e x = 12."
+          )
+        );
+      } else {
+        addMessages(
+          student(text),
+          tutor(
+            "Ainda não. Vamos resolver juntos: representamos o número por x. Seu dobro é 2x. Assim, x + 2x = 36, então 3x = 36. Dividindo por 3, encontramos x = 12."
+          )
+        );
+      }
+
+      setInput("");
+      setView("return");
+      return;
+    }
+
+    if (activeMode === "solve") {
+      addMessages(
+        student(text),
+        tutor(
+          "Recebi sua questão. Esta primeira versão ainda não possui inteligência artificial conectada. Na próxima etapa, o Carlão poderá interpretar e resolver qualquer questão passo a passo."
+        )
+      );
+
+      setInput("");
+      setView("return");
+      return;
+    }
+
     addMessages(
       student(text),
       tutor(
-        "Recebi sua questão. Na próxima etapa, a inteligência artificial fará a leitura e explicará a resolução passo a passo. Por enquanto, este é o fluxo demonstrativo."
+        "Recebi sua pergunta. Escolha uma opção do menu para continuar a demonstração."
       )
     );
 
     setInput("");
-    setView("return");
   }
 
   function restart() {
     setMessages([
-      tutor("Vamos começar de novo. Como posso ajudar agora?"),
+      tutor(
+        "Vamos começar de novo. Como posso ajudar agora?"
+      ),
     ]);
 
     setView("main");
     setSelectedCategory(null);
     setSelectedTopic(null);
     setLessonStep(0);
+    setActiveMode(null);
     setInput("");
     setMenuOpen(false);
   }
 
   const lessonSteps = selectedTopic
-    ? lessons[selectedTopic] || lessons["Equações do 1º grau"]
+    ? lessons[selectedTopic] ||
+      lessons["Equações do 1º grau"]
     : [];
 
   const currentStep = lessonSteps[lessonStep];
@@ -359,7 +420,9 @@ export default function ChatApp() {
     <main className="app-shell">
       <aside
         className={
-          menuOpen ? "sidebar sidebar-open" : "sidebar"
+          menuOpen
+            ? "sidebar sidebar-open"
+            : "sidebar"
         }
       >
         <div className="brand">
@@ -379,7 +442,9 @@ export default function ChatApp() {
           ＋ Nova conversa
         </button>
 
-        <p className="nav-label">Tutor de Matemática</p>
+        <p className="nav-label">
+          Tutor de Matemática
+        </p>
 
         <button
           className="nav-item active"
@@ -394,9 +459,10 @@ export default function ChatApp() {
 
           <div>
             <strong>Aprenda no seu ritmo</strong>
+
             <p>
-              Escolha, pratique e peça outra explicação quando
-              precisar.
+              Escolha, pratique e peça outra explicação
+              quando precisar.
             </p>
           </div>
         </div>
@@ -427,13 +493,16 @@ export default function ChatApp() {
 
             <div>
               <strong>Professor Carlão</strong>
+
               <span>
                 <i /> Tutor online
               </span>
             </div>
           </div>
 
-          <span className="demo-badge">Demonstração</span>
+          <span className="demo-badge">
+            Demonstração
+          </span>
         </header>
 
         <div className="conversation">
@@ -549,7 +618,9 @@ export default function ChatApp() {
                     <button
                       className="secondary-action"
                       type="button"
-                      onClick={() => setView("topics")}
+                      onClick={() =>
+                        setView("topics")
+                      }
                     >
                       Escolher outro tópico
                     </button>
@@ -572,7 +643,9 @@ export default function ChatApp() {
                 setInput(event.target.value)
               }
               placeholder={
-                view === "question"
+                activeMode === "challenge"
+                  ? "Digite sua resposta..."
+                  : activeMode === "solve"
                   ? "Digite ou cole sua questão..."
                   : "Digite sua dúvida de Matemática..."
               }
@@ -581,16 +654,16 @@ export default function ChatApp() {
 
             <button
               type="submit"
-              aria-label="Enviar pergunta"
               disabled={!input.trim()}
+              aria-label="Enviar resposta"
             >
               ➜
             </button>
           </form>
 
           <p>
-            Versão demonstrativa — respostas livres com IA serão
-            adicionadas na próxima etapa.
+            Versão demonstrativa — respostas livres com
+            IA serão adicionadas na próxima etapa.
           </p>
         </footer>
       </section>
@@ -599,13 +672,11 @@ export default function ChatApp() {
 }
 
 function OptionList({ items, onChoose }) {
-  if (!Array.isArray(items)) return null;
-
   return (
     <div className="option-list">
-      {items.map((item, index) => (
+      {items.map((item) => (
         <button
-          key={item.id || item.name || item.title || index}
+          key={item.id || item.name || item.title}
           type="button"
           onClick={() => onChoose(item)}
         >
@@ -618,7 +689,9 @@ function OptionList({ items, onChoose }) {
             <small>{item.subtitle}</small>
           </span>
 
-          {item.badge && <em>{item.badge}</em>}
+          {item.badge && && (
+            <em>{item.badge}</em>
+          )}
 
           <b>›</b>
         </button>
@@ -626,5 +699,6 @@ function OptionList({ items, onChoose }) {
     </div>
   );
 }
+  
 
         
