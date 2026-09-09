@@ -689,7 +689,7 @@ function OptionList({ items, onChoose }) {
             <small>{item.subtitle}</small>
           </span>
 
-          {item.badge && && (
+          {item.badge && (
             <em>{item.badge}</em>
           )}
 
