@@ -1,6 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import {
+  getQuestions,
+  normalizeAnswer,
+} from "@/data/questions";
 
 const mainOptions = [
   {
@@ -26,7 +30,7 @@ const mainOptions = [
     id: "challenge",
     icon: "🔥",
     title: "Desafio de Matemática",
-    subtitle: "Teste seu raciocínio",
+    subtitle: "Questões aleatórias",
   },
   {
     id: "enem",
@@ -107,22 +111,6 @@ const categories = [
       "Juros compostos",
     ],
   },
-  {
-    name: "Probabilidade",
-    count: 2,
-    topics: [
-      "Probabilidade básica",
-      "Análise combinatória",
-    ],
-  },
-  {
-    name: "Estatística",
-    count: 2,
-    topics: [
-      "Média, moda e mediana",
-      "Gráficos e tabelas",
-    ],
-  },
 ];
 
 const lessons = {
@@ -150,14 +138,14 @@ const lessons = {
     {
       title: "1. O conceito",
       text:
-        "Uma equação é uma igualdade com um valor desconhecido. Nosso objetivo é descobrir esse valor.",
+        "Uma equação é uma igualdade que possui um valor desconhecido.",
       example: "2x + 6 = 18",
     },
     {
       title: "2. Equilibrando",
       text:
         "Tudo o que fazemos de um lado da igualdade também deve ser feito do outro.",
-      example: "2x + 6 - 6 = 18 - 6",
+      example: "2x + 6 − 6 = 18 − 6",
     },
     {
       title: "3. Encontrando x",
@@ -167,6 +155,42 @@ const lessons = {
     },
   ],
 };
+
+const challengeStages = [
+  {
+    id: "fundamental-ii",
+    icon: "📘",
+    title: "Fundamental II",
+    subtitle: "6º ao 9º ano",
+  },
+  {
+    id: "ensino-medio",
+    icon: "🎓",
+    title: "Ensino Médio",
+    subtitle: "1º ao 3º ano",
+  },
+];
+
+const challengeLevels = [
+  {
+    id: "easy",
+    icon: "🌱",
+    title: "Fácil",
+    subtitle: "Fundamentos e cálculos diretos",
+  },
+  {
+    id: "medium",
+    icon: "⚡",
+    title: "Médio",
+    subtitle: "Aplicação e raciocínio",
+  },
+  {
+    id: "hard",
+    icon: "🚀",
+    title: "Difícil",
+    subtitle: "Problemas mais avançados",
+  },
+];
 
 function tutor(text) {
   return { role: "tutor", text };
@@ -184,6 +208,10 @@ function Avatar({ className, alt = "" }) {
   );
 }
 
+function shuffle(items) {
+  return [...items].sort(() => Math.random() - 0.5);
+}
+
 export default function ChatApp() {
   const [messages, setMessages] = useState([
     tutor(
@@ -194,11 +222,21 @@ export default function ChatApp() {
   const [view, setView] = useState("main");
   const [selectedCategory, setSelectedCategory] =
     useState(null);
-  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [selectedTopic, setSelectedTopic] =
+    useState(null);
   const [lessonStep, setLessonStep] = useState(0);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeMode, setActiveMode] = useState(null);
+
+  const [challengeStage, setChallengeStage] =
+    useState(null);
+  const [challengeLevel, setChallengeLevel] =
+    useState(null);
+  const [currentChallenge, setCurrentChallenge] =
+    useState(null);
+  const [lastChallengeId, setLastChallengeId] =
+    useState(null);
+
   const bottomRef = useRef(null);
 
   function addMessages(...newMessages) {
@@ -210,8 +248,6 @@ export default function ChatApp() {
 
   function chooseMain(option) {
     if (!option) return;
-
-    setActiveMode(option.id);
 
     if (option.id === "learn") {
       addMessages(
@@ -241,29 +277,29 @@ export default function ChatApp() {
       addMessages(
         student(option.title),
         tutor(
-          "Desafio: um número somado ao seu dobro resulta em 36. Qual é esse número?"
+          "Escolha a etapa escolar do desafio:"
         )
       );
 
-      setView("challenge");
+      setView("challenge-stages");
       return;
     }
 
     const replies = {
       mock:
-        "Simulado demonstrativo selecionado. Na próxima versão, as questões serão apresentadas uma por vez e o resultado aparecerá no final.",
+        "O simulado completo será acrescentado em uma próxima atualização.",
 
       enem:
-        "Treino ENEM selecionado. Você poderá escolher o conteúdo e a dificuldade das questões.",
+        "O treino ENEM será acrescentado em uma próxima atualização.",
 
       exam:
-        "Vestibulares selecionados. Você poderá escolher a banca, o assunto e o nível de dificuldade.",
+        "O treino para vestibulares será acrescentado em uma próxima atualização.",
 
       progress:
-        "Seu desempenho aparecerá aqui quando o histórico de estudos estiver conectado.",
+        "Seu desempenho será registrado quando o sistema de histórico estiver conectado.",
 
       level:
-        "O diagnóstico usará questões progressivas para identificar seu nível de Matemática.",
+        "O diagnóstico de nível será acrescentado em uma próxima atualização.",
     };
 
     addMessages(
@@ -305,6 +341,111 @@ export default function ChatApp() {
     setView("lesson");
   }
 
+  function chooseChallengeStage(stage) {
+    setChallengeStage(stage);
+
+    addMessages(
+      student(stage.title),
+      tutor("Agora escolha o nível do desafio:")
+    );
+
+    setView("challenge-levels");
+  }
+
+  function chooseChallengeLevel(level) {
+    if (!challengeStage) return;
+
+    const bank = getQuestions(
+      challengeStage.id,
+      level.id
+    );
+
+    if (!bank.length) {
+      addMessages(
+        tutor(
+          "Não encontrei questões para essa combinação."
+        )
+      );
+
+      return;
+    }
+
+    const availableQuestions = bank.filter(
+      (question) => question.id !== lastChallengeId
+    );
+
+    const available = availableQuestions.length
+      ? availableQuestions
+      : bank;
+
+    const selected =
+      available[
+        Math.floor(Math.random() * available.length)
+      ];
+
+    const preparedQuestion = {
+      ...selected,
+      options:
+        selected.type === "multiple-choice"
+          ? shuffle(selected.options)
+          : [],
+    };
+
+    setChallengeLevel(level);
+    setCurrentChallenge(preparedQuestion);
+    setLastChallengeId(preparedQuestion.id);
+
+    addMessages(
+      student(`Nível ${level.title}`),
+      tutor(
+        `${preparedQuestion.subject}: ${preparedQuestion.question}`
+      )
+    );
+
+    setView("challenge");
+  }
+
+  function gradeChallengeAnswer(answer) {
+    if (!currentChallenge) return;
+
+    const normalized = normalizeAnswer(answer);
+
+    const acceptedAnswers = [
+      currentChallenge.answer,
+      ...(currentChallenge.accepted || []),
+    ].map(normalizeAnswer);
+
+    const correct =
+      acceptedAnswers.includes(normalized);
+
+    if (correct) {
+      addMessages(
+        student(answer),
+        tutor(
+          `Muito bem! ✅ Resposta correta: ${currentChallenge.answer}.
+
+Resolução passo a passo:
+
+${currentChallenge.explanation}`
+        )
+      );
+    } else {
+      addMessages(
+        student(answer),
+        tutor(
+          `Ainda não. ❌ A resposta correta é ${currentChallenge.answer}.
+
+Resolução passo a passo:
+
+${currentChallenge.explanation}`
+        )
+      );
+    }
+
+    setInput("");
+    setView("challenge-result");
+  }
+
   function nextLesson() {
     const lessonSteps =
       lessons[selectedTopic] ||
@@ -317,7 +458,7 @@ export default function ChatApp() {
 
     addMessages(
       tutor(
-        "Aula concluída! Você pode revisar outro tópico ou voltar ao menu principal."
+        "Aula concluída! Você pode escolher outro tópico ou voltar ao menu principal."
       )
     );
 
@@ -340,57 +481,20 @@ export default function ChatApp() {
 
     if (!text) return;
 
-    const normalized = text
-      .toLowerCase()
-      .replace(/\s/g, "");
-
-    if (activeMode === "challenge") {
-      const correct =
-        normalized === "12" ||
-        normalized === "x=12";
-
-      if (correct) {
-        addMessages(
-          student(text),
-          tutor(
-            "Muito bem! ✅ A resposta é 12. Representando o número por x, temos x + 2x = 36. Portanto, 3x = 36 e x = 12."
-          )
-        );
-      } else {
-        addMessages(
-          student(text),
-          tutor(
-            "Ainda não. Vamos resolver juntos: representamos o número por x. Seu dobro é 2x. Assim, x + 2x = 36, então 3x = 36. Dividindo por 3, encontramos x = 12."
-          )
-        );
-      }
-
-      setInput("");
-      setView("return");
-      return;
-    }
-
-    if (activeMode === "solve") {
-      addMessages(
-        student(text),
-        tutor(
-          "Recebi sua questão. Esta primeira versão ainda não possui inteligência artificial conectada. Na próxima etapa, o Carlão poderá interpretar e resolver qualquer questão passo a passo."
-        )
-      );
-
-      setInput("");
-      setView("return");
+    if (view === "challenge" && currentChallenge) {
+      gradeChallengeAnswer(text);
       return;
     }
 
     addMessages(
       student(text),
       tutor(
-        "Recebi sua pergunta. Escolha uma opção do menu para continuar a demonstração."
+        "Recebi sua pergunta. As respostas livres serão conectadas à inteligência artificial em uma etapa futura."
       )
     );
 
     setInput("");
+    setView("return");
   }
 
   function restart() {
@@ -404,9 +508,11 @@ export default function ChatApp() {
     setSelectedCategory(null);
     setSelectedTopic(null);
     setLessonStep(0);
-    setActiveMode(null);
     setInput("");
     setMenuOpen(false);
+    setChallengeStage(null);
+    setChallengeLevel(null);
+    setCurrentChallenge(null);
   }
 
   const lessonSteps = selectedTopic
@@ -501,7 +607,7 @@ export default function ChatApp() {
           </div>
 
           <span className="demo-badge">
-            Demonstração
+            Banco de questões
           </span>
         </header>
 
@@ -570,6 +676,41 @@ export default function ChatApp() {
                 />
               )}
 
+            {view === "challenge-stages" && (
+              <OptionList
+                items={challengeStages}
+                onChoose={chooseChallengeStage}
+              />
+            )}
+
+            {view === "challenge-levels" && (
+              <OptionList
+                items={challengeLevels}
+                onChoose={chooseChallengeLevel}
+              />
+            )}
+
+            {view === "challenge" &&
+              currentChallenge?.type ===
+                "multiple-choice" && (
+                <OptionList
+                  items={currentChallenge.options.map(
+                    (option, index) => ({
+                      id: `answer-${index}`,
+                      icon: String.fromCharCode(
+                        65 + index
+                      ),
+                      title: option,
+                      subtitle:
+                        "Escolher esta alternativa",
+                    })
+                  )}
+                  onChoose={(option) =>
+                    gradeChallengeAnswer(option.title)
+                  }
+                />
+              )}
+
             {view === "lesson" && currentStep && (
               <div className="lesson-card">
                 <span className="lesson-progress">
@@ -628,6 +769,51 @@ export default function ChatApp() {
               </div>
             )}
 
+            {view === "challenge-result" &&
+              challengeLevel && (
+                <div className="actions">
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={() =>
+                      chooseChallengeLevel(
+                        challengeLevel
+                      )
+                    }
+                  >
+                    Outra questão do mesmo nível
+                  </button>
+
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() =>
+                      setView("challenge-levels")
+                    }
+                  >
+                    Escolher outro nível
+                  </button>
+
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() =>
+                      setView("challenge-stages")
+                    }
+                  >
+                    Escolher outra etapa escolar
+                  </button>
+
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={restart}
+                  >
+                    Voltar ao menu principal
+                  </button>
+                </div>
+              )}
+
             <div ref={bottomRef} />
           </div>
         </div>
@@ -643,9 +829,9 @@ export default function ChatApp() {
                 setInput(event.target.value)
               }
               placeholder={
-                activeMode === "challenge"
+                view === "challenge"
                   ? "Digite sua resposta..."
-                  : activeMode === "solve"
+                  : view === "question"
                   ? "Digite ou cole sua questão..."
                   : "Digite sua dúvida de Matemática..."
               }
@@ -662,8 +848,8 @@ export default function ChatApp() {
           </form>
 
           <p>
-            Versão demonstrativa — respostas livres com
-            IA serão adicionadas na próxima etapa.
+            300 questões com correção e resolução
+            explicada.
           </p>
         </footer>
       </section>
@@ -672,11 +858,18 @@ export default function ChatApp() {
 }
 
 function OptionList({ items, onChoose }) {
+  if (!Array.isArray(items)) return null;
+
   return (
     <div className="option-list">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <button
-          key={item.id || item.name || item.title}
+          key={
+            item.id ||
+            item.name ||
+            item.title ||
+            index
+          }
           type="button"
           onClick={() => onChoose(item)}
         >
@@ -689,9 +882,7 @@ function OptionList({ items, onChoose }) {
             <small>{item.subtitle}</small>
           </span>
 
-          {item.badge && (
-            <em>{item.badge}</em>
-          )}
+          {item.badge && <em>{item.badge}</em>}
 
           <b>›</b>
         </button>
